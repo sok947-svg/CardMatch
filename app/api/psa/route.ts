@@ -14,7 +14,20 @@ export async function GET(req:NextRequest){
   const val=(...names:string[])=>{for(const name of names){const v=x[name];if(v!==null&&v!==undefined&&String(v).trim())return String(v).trim()}return ''};
   const result={cert,player:val('Subject','subject','Player','PlayerName'),year:val('Year','year'),set_name:val('Brand','SetName','setName','BrandName'),parallel:val('Variety','variety'),grade:val('GradeDescription','gradeDescription','CardGrade','Grade','grade'),sport:val('Category','category'),card_number:val('CardNumber','cardNumber')};
   let images:string[]=[];
-  try{const ir=await fetch('https://api.psacard.com/publicapi/cert/GetImagesByCertNumber/'+cert,{headers,cache:'no-store',signal:AbortSignal.timeout(8000)});if(ir.ok){const img=await ir.json();const values:string[]=[];function scan(o:unknown,depth=0){if(depth>4||values.length>8||o==null)return;if(typeof o==='string'){if(/^https:\/\//.test(o)&&/\.(jpg|jpeg|png|webp)(\?|$)/i.test(o))values.push(o);return}if(Array.isArray(o))o.forEach(v=>scan(v,depth+1));else if(typeof o==='object')Object.values(o).forEach(v=>scan(v,depth+1))}scan(img);images=[...new Set(values)].filter(v=>{try{return new URL(v).protocol==='https:'}catch{return false}}).slice(0,2)}}}catch{}
+  try {
+   const response=await fetch('https://api.psacard.com/publicapi/cert/GetImagesByCertNumber/'+cert,{headers,cache:'no-store',signal:AbortSignal.timeout(8000)});
+   if(response.ok){
+    const imageData=await response.json();
+    const found:string[]=[];
+    function collect(value:unknown,depth=0):void {
+     if(depth>4||found.length>=8||value==null)return;
+     if(typeof value==='string') {if(value.startsWith('https://')&&(value.includes('.jpg')||value.includes('.png')||value.includes('.jpeg')||value.includes('.webp')))found.push(value);return;}
+     if(Array.isArray(value)){for(const item of value)collect(item,depth+1);return;}
+     if(typeof value==='object')for(const item of Object.values(value))collect(item,depth+1);
+    }
+    collect(imageData);images=Array.from(new Set(found)).slice(0,2);
+   }
+  }catch{}
   return NextResponse.json({card:result,images,psaUrl:'https://www.psacard.com/cert/'+cert});
  }catch{return NextResponse.json({error:'Could not reach PSA. Try again shortly.'},{status:502})}
 }
