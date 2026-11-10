@@ -3,12 +3,20 @@ export const runtime='nodejs';
 export async function GET(req:NextRequest){
  const cert=req.nextUrl.searchParams.get('cert')?.trim()||'';
  if(!/^\d{5,12}$/.test(cert))return NextResponse.json({error:'Enter a valid PSA certification number.'},{status:400});
- const token=process.env.PSA_API_TOKEN;
+ const token=process.env.PSA_API_TOKEN?.trim();
  if(!token)return NextResponse.json({error:'PSA API token is not configured on the server.'},{status:503});
  try{
   const headers={Authorization:'Bearer '+token,Accept:'application/json'};
   const res=await fetch('https://api.psacard.com/publicapi/cert/GetByCertNumber/'+cert,{headers,cache:'no-store',signal:AbortSignal.timeout(10000)});
-  if(!res.ok)return NextResponse.json({error:res.status===404?'PSA certification not found.':res.status===401?'PSA returned 401 Unauthorized. Check that your API token is active and correct.':res.status===403?'PSA returned 403 Forbidden. Your token may lack permission to access this PSA endpoint.':'PSA lookup unavailable ('+res.status+').'},{status:res.status===404?404:502});
+  if(!res.ok){
+   const contentType=res.headers.get('content-type')||'';
+   let reason='';
+   if(contentType.includes('application/json')){
+    try{const payload=await res.json();reason=String(payload.ServerMessage||payload.message||payload.error_description||payload.error||'').slice(0,180)}catch{}
+   }
+   const explanation=res.status===403?'PSA returned 403 Forbidden. The PSA server denied access.':res.status===401?'PSA returned 401 Unauthorized.':'PSA lookup failed (HTTP '+res.status+').';
+   return NextResponse.json({error:explanation+(reason?' PSA says: '+reason:'')+' If this persists, contact PSA API support with the HTTP status and cert number, but never your token.'},{status:502});
+  }
   const body=await res.json();const x=body.PSACert||body.PsaCert||body.psaCert||body.Cert||body;
   if(body.IsValidRequest===false||!x||typeof x!=='object'||!Object.keys(x).length)return NextResponse.json({error:body.ServerMessage||'No PSA certification details were returned.'},{status:404});
   const val=(...names:string[])=>{for(const name of names){const v=x[name];if(v!==null&&v!==undefined&&String(v).trim())return String(v).trim()}return ''};
