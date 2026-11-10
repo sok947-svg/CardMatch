@@ -2,3 +2,5 @@
 textarea.field{resize:vertical;font:inherit}.editbox{margin-top:14px;padding:16px;border:1px solid #394355;border-radius:12px;background:#101724}.btn.danger{border-color:#9b4b4b;color:#ffb6b6;background:#352027}.btn.danger:hover{background:#4b2525}
 
 .listing-comps{margin-top:14px;padding:14px;background:#111927;border:1px solid #334156;border-radius:12px}.listing-comps .btn{padding:9px 12px;font-size:13px;display:inline-block}
+
+.heat-summary{margin:12px 0;padding:12px 14px;border:1px solid #65542c;background:#27251c;border-radius:10px}.heat-summary strong{color:#f1c96a}
